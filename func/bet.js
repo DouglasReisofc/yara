@@ -22,13 +22,23 @@ function formatBox(title, lines) {
 
 async function fetchHorapgFromAPI() {
     try {
-        const url = `${siteapi}/group/horapg`;
+        const url = `${siteapi}/group/horapg?bot=${numerobot}`;
+        console.log(`[HORAPG] Fazendo requisição para: ${url}`);
         const response = await axios.get(url);
+        console.log(`[HORAPG] Resposta da API:`, response.data);
+        
         if (response.data && Array.isArray(response.data.data)) {
+            console.log(`[HORAPG] Grupos encontrados: ${response.data.data.length}`);
             return response.data.data;
+        } else {
+            console.log(`[HORAPG] Estrutura de resposta inválida:`, response.data);
         }
     } catch (error) {
-        // erro silencioso
+        console.error('Erro ao buscar horapg da API:', error.message);
+        if (error.response) {
+            console.error('Status:', error.response.status);
+            console.error('Data:', error.response.data);
+        }
     }
     return [];
 }
@@ -62,6 +72,7 @@ async function storeHorapg(groupJid, data = {}) {
             return res.data;
         }
     } catch (err) {
+        console.error('Erro ao salvar horapg:', err.message);
         return null;
     }
 }
@@ -71,7 +82,7 @@ async function updateLastSent(groupJid) {
         const encoded = encodeURIComponent(groupJid);
         await axios.patch(`${siteapi}/group/${encoded}/horapg/last-sent`);
     } catch (err) {
-        // erro silencioso
+        console.error('Erro ao atualizar último envio horapg:', err.message);
     }
 }
 
@@ -80,7 +91,7 @@ async function deleteHorapg(groupJid) {
         const encoded = encodeURIComponent(groupJid);
         await axios.delete(`${siteapi}/group/${encoded}/horapg`);
     } catch (err) {
-        // erro silencioso
+        console.error('Erro ao deletar horapg:', err.message);
     }
 }
 
@@ -92,7 +103,7 @@ async function getHorapg(groupJid) {
             return response.data.settings;
         }
     } catch (err) {
-        // erro silencioso
+        console.error('Erro ao obter horapg:', err.message);
     }
     return null;
 }
@@ -202,7 +213,9 @@ async function verificarHorariosEEnviarMensagens() {
     let registros = [];
     try {
         registros = await fetchHorapgFromAPI();
+        console.log(`[HORAPG] Buscando grupos ativos. Encontrados: ${registros.length}`);
     } catch (err) {
+        console.error('[HORAPG] Erro ao buscar grupos:', err.message);
         registros = [];
     }
 

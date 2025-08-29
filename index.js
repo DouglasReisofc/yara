@@ -2777,24 +2777,29 @@ client.on('message', async (message) => {
       const ativarNotificacoes = args[1] === '1';
 
       const grupoIdAtivar = message.from;
+      console.log(`[HORAPG] Comando executado: ${ativarNotificacoes ? 'ativar' : 'desativar'} para grupo ${grupoIdAtivar}`);
 
       if (ativarNotificacoes) {
         const dadosAtuais = await getHorapg(grupoIdAtivar);
         const intervalo = dadosAtuais?.intervalo_horapg || '5m';
+        console.log(`[HORAPG] Dados atuais:`, dadosAtuais);
 
-        await storeHorapg(grupoIdAtivar, {
+        const resultado = await storeHorapg(grupoIdAtivar, {
           horapg: true,
           intervalo_horapg: intervalo
         });
+        console.log(`[HORAPG] Resultado do salvamento:`, resultado);
         await updateLastSent(grupoIdAtivar);
       } else {
         const dadosAtuais = await getHorapg(grupoIdAtivar);
         const intervalo = dadosAtuais?.intervalo_horapg || '5m';
+        console.log(`[HORAPG] Dados atuais:`, dadosAtuais);
 
-        await storeHorapg(grupoIdAtivar, {
+        const resultado = await storeHorapg(grupoIdAtivar, {
           horapg: false,
           intervalo_horapg: intervalo
         });
+        console.log(`[HORAPG] Resultado do salvamento:`, resultado);
       }
 
       await client.sendMessage(grupoIdAtivar, `✅ Notificações ${ativarNotificacoes ? 'ativadas' : 'desativadas'} para este grupo.\nUse o comando ${prefixo}addhorapg 5m para adicionar o intervalo de tempo que cada horario será enviado.`);
@@ -2829,11 +2834,13 @@ client.on('message', async (message) => {
       const grupoIdHorarios = message.from;
 
       const dadosAtuais = await getHorapg(grupoIdHorarios);
+      console.log(`[HORAPG] Dados atuais para addhorapg:`, dadosAtuais);
 
-      await storeHorapg(grupoIdHorarios, {
+      const resultado = await storeHorapg(grupoIdHorarios, {
         horapg: dadosAtuais?.horapg || false,
         intervalo_horapg: intervaloArgumento
       });
+      console.log(`[HORAPG] Resultado do salvamento addhorapg:`, resultado);
 
       await client.sendMessage(grupoIdHorarios, `✅ Intervalo de notificações ajustado para ${intervaloArgumento}. Para ativar ou desativar as notificações automáticas, use ${prefixo}horapg`);
       break;
