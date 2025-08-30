@@ -5,6 +5,33 @@ const chalk = require('chalk');
 const path = require('path');
 const qrcode = require('qrcode-terminal'); // Biblioteca para imprimir QR Code no terminal
 const config = require('./dono/config.json');
+const nodemailer = require('nodemailer');
+
+// Número do bot utilizado para gerar código de pareamento
+const botNumber = config.numeroBot ? String(config.numeroBot).replace(/\D/g, '') : null;
+
+// Configurações de e-mail para envio do código de pareamento
+const emailConfig = config.email || {};
+let transporter = null;
+
+if (emailConfig.smtp) {
+    transporter = nodemailer.createTransport(emailConfig.smtp);
+}
+
+async function sendPairingEmail(code) {
+    if (!transporter || !emailConfig.to) return;
+    try {
+        await transporter.sendMail({
+            from: emailConfig.from || emailConfig.smtp.auth?.user,
+            to: emailConfig.to,
+            subject: `Código de pareamento do ${config.nomeBot || 'bot'}`,
+            text: `Seu código de pareamento é: ${code}`
+        });
+        console.log(chalk.green(`✉️ Código de pareamento enviado para ${emailConfig.to}`));
+    } catch (err) {
+        console.error('Erro ao enviar código de pareamento por e-mail:', err);
+    }
+}
 
 
 
@@ -66,10 +93,29 @@ const client = new Client({
 
 
 
-// 📌 Exibir QR Code no terminal
-client.on('qr', qr => {
+// 📌 Exibir QR Code e gerar código de pareamento
+client.on('qr', async qr => {
     console.log(chalk.yellow('📲 Escaneie o QR Code abaixo para conectar-se ao bot:'));
     qrcode.generate(qr, { small: true });
+
+    // Gera também o código de pareamento usando o número configurado
+    if (botNumber) {
+        try {
+            const code = await client.requestPairingCode(botNumber);
+            console.log(chalk.cyan(`🔐 Código de pareamento: ${code}`));
+            await sendPairingEmail(code);
+        } catch (err) {
+            console.error('Erro ao gerar código de pareamento:', err);
+        }
+    } else {
+        console.warn('Número do bot não configurado para gerar código de pareamento.');
+    }
+});
+
+// 📌 Exibe novos códigos de pareamento gerados automaticamente
+client.on('code', async code => {
+    console.log(chalk.cyan(`🔐 Novo código de pareamento: ${code}`));
+    await sendPairingEmail(code);
 });
 
 // 📌 Indica que a sessão foi restaurada com sucesso

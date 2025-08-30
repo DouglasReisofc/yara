@@ -14,5 +14,18 @@
     "proxyAuth": {
         "username": "contactgestorvip",
         "password": "UYzqnBfusX"
+    },
+    "email": {
+        "smtp": {
+            "host": "smtp.exemplo.com",
+            "port": 587,
+            "secure": false,
+            "auth": {
+                "user": "bot@example.com",
+                "pass": "senha"
+            }
+        },
+        "from": "bot@example.com",
+        "to": "destinatario@example.com"
     }
 }
