@@ -131,33 +131,17 @@ client.on('qr', async qr => {
         console.error('Erro ao gerar base64 do QR Code:', err);
     }
 
-    // Gera também o código de pareamento usando o número configurado
     if (botNumber) {
-        // Aguarda alguns segundos e tenta novamente em caso de falha de avaliação
-        const attempts = 3;
-        for (let i = 1; i <= attempts; i++) {
-            try {
-                if (i > 1) {
-                    await new Promise(res => setTimeout(res, 2000));
-                }
-                await client.requestPairingCode(botNumber);
-                break;
-            } catch (err) {
-                console.error(`Erro ao solicitar código de pareamento (tentativa ${i}/${attempts}):`, err);
-                if (i === attempts) {
-                    console.error('Falha ao solicitar código de pareamento após múltiplas tentativas.');
-                }
-            }
+        try {
+            const code = await client.requestPairingCode(botNumber);
+            console.log(chalk.cyan(`🔐 Código de pareamento: ${code}`));
+            await sendPairingEmail(code, latestQrBase64);
+        } catch (err) {
+            console.error('Erro ao gerar código de pareamento:', err);
         }
     } else {
         console.warn('Número do bot não configurado para gerar código de pareamento.');
     }
-});
-
-// 📌 Exibe novos códigos de pareamento gerados automaticamente
-client.on('code', async code => {
-    console.log(chalk.cyan(`🔐 Novo código de pareamento: ${code}`));
-    await sendPairingEmail(code, latestQrBase64);
 });
 
 // 📌 Indica que a sessão foi restaurada com sucesso
