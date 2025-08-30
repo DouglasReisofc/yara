@@ -547,8 +547,9 @@ client.on('message', async (message) => {
   const donoComSuFixo = `${config.numeroDono}@c.us`;
   const isGroup = from.endsWith('@g.us');
 
+  let chat;
   try {
-    const chat = await message.getChat();
+    chat = await message.getChat();
     await chat.sendSeen();
   } catch (err) {
     console.error('Erro ao marcar conversa como lida:', err);
