@@ -12,7 +12,7 @@ const chalk = require('chalk');
 const moment = require('moment-timezone');
 const config = require('./dono/config.json');
 const { obterHorarioAtual, buscarHorarios, verificarHorariosEEnviarMensagens, storeHorapg, updateLastSent, deleteHorapg, getHorapg } = require('./func/bet.js');
-const { processTikTokMedia, processKwaiMedia, downloadVideoFromYouTube, downloadFromApi } = require('./func/downloader.js');
+const { processTikTokMedia, processKwaiMedia, searchYTFromApi, sendSearchResults, downloadAudioFromApi, downloadVideoFromApi } = require('./func/downloader.js');
 const os = require('os');
 const ping = require('ping');
 const ffmpeg = require('fluent-ffmpeg');
@@ -1749,6 +1749,30 @@ client.on('message', async (message) => {
 
 
     case 'play':
+      if (!aluguelStatus.ativo) {
+        await client.sendMessage(from, msgaluguel);
+        return;
+      }
+
+      if (!isGroup) {
+        await client.sendMessage(from, msgsogrupo);
+        return;
+      }
+
+      if ((isSoadm === '1' || isSoadm === 1) && !isGroupAdmins && !isDono) {
+        await client.sendMessage(from, modosoadm);
+        return;
+      }
+
+      if (args.length === 1) {
+        await client.sendMessage(from, "Por favor, forneça o nome do vídeo. Exemplo: !play shape of you");
+        return;
+      }
+
+      const searchQuery = args.slice(1).join(' ').trim();
+      await sendSearchResults(searchQuery, from);
+      break;
+
     case 'ytmp3':
       if (!aluguelStatus.ativo) {
         await client.sendMessage(from, msgaluguel);
@@ -1765,15 +1789,23 @@ client.on('message', async (message) => {
         return;
       }
 
-
-
       if (args.length === 1) {
-        await client.sendMessage(from, "Por favor, forneça o nome ou link do vídeo. Exemplo: !play2 <nome do vídeo ou link>");
+        await client.sendMessage(from, "Por favor, forneça o nome ou link do vídeo. Exemplo: !ytmp3 <nome do vídeo ou link>");
         return;
       }
 
-      const query = args.slice(1).join(' ').trim();
-      await downloadFromApi(query, from);
+      let audioQuery = args.slice(1).join(' ').trim();
+      const isValidUrl = (str) => /(https?:\/\/[^\s]+)/.test(str);
+      if (!isValidUrl(audioQuery)) {
+        const results = await searchYTFromApi(audioQuery);
+        if (!Array.isArray(results) || results.length === 0) {
+          await client.sendMessage(from, '❌ Nenhum resultado encontrado.');
+          return;
+        }
+        audioQuery = results[0].url;
+      }
+
+      await downloadAudioFromApi(audioQuery, from);
       break;
 
     case 'ytmp4':
@@ -1793,30 +1825,23 @@ client.on('message', async (message) => {
         return;
       }
 
-
       if (args.length === 1) {
         await client.sendMessage(from, "Por favor, forneça o nome ou link do vídeo. Exemplo: !ytmp4 <nome do vídeo ou link>");
         return;
       }
 
-      const videoQuery = args.slice(1).join(' ').trim();
-
-      const isValidUrll = (str) => {
-        const regex = /(https?:\/\/[^\s]+)/g;
-        return regex.test(str);
-      };
-
-      let searchTitle = videoQuery; let videoUrl = searchTitle;
-      if (!isValidUrll(searchTitle)) {
-        const searchResults = await yts(searchTitle);
-        if (searchResults.videos.length === 0) {
+      let videoQuery = args.slice(1).join(' ').trim();
+      const isValidVideoUrl = (str) => /(https?:\/\/[^\s]+)/.test(str);
+      if (!isValidVideoUrl(videoQuery)) {
+        const results = await searchYTFromApi(videoQuery);
+        if (!Array.isArray(results) || results.length === 0) {
           await client.sendMessage(from, '❌ Nenhum vídeo encontrado para a pesquisa fornecida.');
           return;
         }
-        videoUrl = searchResults.videos[0].url;
+        videoQuery = results[0].url;
       }
 
-      await downloadVideoFromYouTube(videoUrl, from);
+      await downloadVideoFromApi(videoQuery, from);
       break;
 
 

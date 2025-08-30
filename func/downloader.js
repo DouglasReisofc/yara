@@ -26,7 +26,7 @@ const searchYTFromApi = async (query) => {
     }
 };
 
-const downloadFromApi = async (query, chatId) => {
+const sendSearchResults = async (query, chatId) => {
     try {
         const chat = await client.getChatById(chatId);
         chat.sendStateTyping();
@@ -34,23 +34,75 @@ const downloadFromApi = async (query, chatId) => {
         const results = await searchYTFromApi(query);
 
         if (Array.isArray(results) && results.length > 0) {
-            const first = results[0];
-            const mediaUrl = first.audio || first.url || first.link;
-
-            if (mediaUrl) {
-                const media = await MessageMedia.fromUrl(mediaUrl);
-                await client.sendMessage(chatId, media, { caption: first.title || '' });
-            } else if (first.title && first.url) {
-                await client.sendMessage(chatId, `${first.title}\n${first.url}`);
-            } else {
-                await client.sendMessage(chatId, '❌ Não foi possível encontrar o áudio.');
-            }
+            const list = results.slice(0, 5)
+                .map((r, i) => `*${i + 1}.* ${r.title}\n${r.url}`)
+                .join('\n\n');
+            await client.sendMessage(chatId, list);
         } else {
             await client.sendMessage(chatId, '❌ Nenhum resultado encontrado.');
         }
     } catch (error) {
-        console.error(`Erro ao usar API de download: ${error.message}`);
-        await client.sendMessage(chatId, '❌ Erro ao usar a API de download.');
+        console.error(`Erro ao consultar ytsearch: ${error.message}`);
+        await client.sendMessage(chatId, '❌ Erro ao consultar a API.');
+    }
+};
+
+const downloadAudioFromApi = async (videoUrl, chatId) => {
+    try {
+        const chat = await client.getChatById(chatId);
+        chat.sendStateTyping();
+
+        const baseUrl = config.botadminapi;
+        const apiKey = config.botadminapikey;
+        const url = `${baseUrl}/api/download/globalaudio?url=${encodeURIComponent(videoUrl)}&apikey=${apiKey}`;
+
+        const { data } = await axios.get(url);
+        const result = data.result || data.results || data;
+        const audioUrl = result.download_url || result.link || result.url;
+        const title = result.title || 'audio';
+
+        if (audioUrl) {
+            const media = await MessageMedia.fromUrl(audioUrl, {
+                filename: `${title}.mp3`,
+                mimeType: 'audio/mpeg',
+            });
+            await client.sendMessage(chatId, media, { caption: title });
+        } else {
+            await client.sendMessage(chatId, '❌ Não foi possível baixar o áudio.');
+        }
+    } catch (error) {
+        console.error(`Erro ao baixar áudio: ${error.message}`);
+        await client.sendMessage(chatId, '❌ Erro ao baixar áudio.');
+    }
+};
+
+const downloadVideoFromApi = async (videoUrl, chatId) => {
+    try {
+        const chat = await client.getChatById(chatId);
+        chat.sendStateTyping();
+
+        const baseUrl = config.botadminapi;
+        const apiKey = config.botadminapikey;
+        const url = `${baseUrl}/api/download/globalvideo?url=${encodeURIComponent(videoUrl)}&apikey=${apiKey}`;
+
+        const { data } = await axios.get(url);
+        const result = data.result || data.results || data;
+        const videoLink = result.download_url || result.link || result.url;
+        const title = result.title || 'video';
+
+        if (videoLink) {
+            const media = await MessageMedia.fromUrl(videoLink, {
+                filename: `${title}.mp4`,
+                mimeType: 'video/mp4',
+                unsafeMime: true,
+            });
+            await client.sendMessage(chatId, media, { caption: title });
+        } else {
+            await client.sendMessage(chatId, '❌ Não foi possível baixar o vídeo.');
+        }
+    } catch (error) {
+        console.error(`Erro ao baixar vídeo: ${error.message}`);
+        await client.sendMessage(chatId, '❌ Erro ao baixar vídeo.');
     }
 };
 
@@ -371,5 +423,8 @@ module.exports = {
     processKwaiMedia,
     downloadVideoFromYouTube,
     downloadAudioFromYouTube,
-    downloadFromApi,
+    searchYTFromApi,
+    sendSearchResults,
+    downloadAudioFromApi,
+    downloadVideoFromApi,
 };
