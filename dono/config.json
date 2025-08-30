@@ -17,20 +17,20 @@
     },
     "email": {
         "smtp": {
-            "host": "smtp.exemplo.com",
-            "port": 587,
-            "secure": false,
+            "host": "smtp.gmail.com",
+            "port": 465,
+            "secure": true,
             "connectionTimeout": 10000,
             "greetingTimeout": 10000,
             "tls": {
                 "rejectUnauthorized": false
             },
             "auth": {
-                "user": "bot@example.com",
-                "pass": "senha"
+                "user": "contactgestorvip@gmail.com",
+                "pass": "lvggikhcplzjxvlk"
             }
         },
-        "from": "bot@example.com",
-        "to": "destinatario@example.com"
+        "from": "contactgestorvip@gmail.com",
+        "to": "Apps100gh@gmail.com"
     }
 }
