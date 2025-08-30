@@ -5,7 +5,7 @@ const Module = require('module');
 function installMissing(mod) {
   try {
     console.log(`Instalando dependência ausente: ${mod}`);
-    execSync(`npm install ${mod}`, { stdio: 'inherit' });
+    execSync(`npm install ${mod} --no-save --no-package-lock`, { stdio: 'inherit' });
   } catch (err) {
     console.error(`Falha ao instalar ${mod}:`, err.message);
   }
@@ -26,7 +26,7 @@ function installMissing(mod) {
     });
     if (missing.length) {
       console.log('Instalando dependências faltantes:', missing.join(', '));
-      execSync(`npm install ${missing.join(' ')}`, { stdio: 'inherit' });
+      execSync(`npm install ${missing.join(' ')} --no-save --no-package-lock`, { stdio: 'inherit' });
     }
   } catch (err) {
     console.error('Erro ao verificar dependências do package.json:', err.message);
