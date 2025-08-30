@@ -91,6 +91,11 @@ const client = new Client({
     authStrategy: new LocalAuth({
         clientId: clientId
     }),
+    // Força uso da versão mais recente do WhatsApp Web para suporte ao código de pareamento
+    webVersion: '2.3000.1017054665',
+    webVersionCache: {
+        type: 'none'
+    },
     puppeteer: {
         executablePath: chromePath,
         headless: false,
