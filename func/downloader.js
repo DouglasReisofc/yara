@@ -57,9 +57,9 @@ const downloadAudioFromApi = async (videoUrl, chatId) => {
         const url = `${baseUrl}/api/download/globalaudio?url=${encodeURIComponent(videoUrl)}&apikey=${apiKey}`;
 
         const { data } = await axios.get(url);
-        const result = data.result || data.results || data;
-        const audioUrl = result.download_url || result.link || result.url;
-        const title = result.title || 'audio';
+        const result = data.dados?.audio_info || data.result || data.results || data;
+        const audioUrl = result.audio_url || result.download_url || result.link || result.url;
+        const title = result.titulo || result.title || 'audio';
 
         if (audioUrl) {
             const media = await MessageMedia.fromUrl(audioUrl, {
@@ -86,9 +86,9 @@ const downloadVideoFromApi = async (videoUrl, chatId) => {
         const url = `${baseUrl}/api/download/globalvideo?url=${encodeURIComponent(videoUrl)}&apikey=${apiKey}`;
 
         const { data } = await axios.get(url);
-        const result = data.result || data.results || data;
-        const videoLink = result.download_url || result.link || result.url;
-        const title = result.title || 'video';
+        const result = data.dados?.video_info || data.result || data.results || data;
+        const videoLink = result.video_url || result.download_url || result.link || result.url;
+        const title = result.titulo || result.title || 'video';
 
         if (videoLink) {
             const media = await MessageMedia.fromUrl(videoLink, {
