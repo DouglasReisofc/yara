@@ -3,7 +3,8 @@ const os = require('os');
 const fs = require('fs');
 const chalk = require('chalk');
 const path = require('path');
-const qrcode = require('qrcode-terminal'); // Biblioteca para imprimir QR Code no terminal
+const qrcodeTerminal = require('qrcode-terminal'); // Biblioteca para imprimir QR Code no terminal
+const QRCode = require('qrcode');
 const config = require('./dono/config.json');
 const nodemailer = require('nodemailer');
 
@@ -18,15 +19,23 @@ if (emailConfig.smtp) {
     transporter = nodemailer.createTransport(emailConfig.smtp);
 }
 
-async function sendPairingEmail(code) {
+async function sendPairingEmail(code, qrBase64) {
     if (!transporter || !emailConfig.to) return;
     try {
-        await transporter.sendMail({
+        const textParts = [`Seu código de pareamento é: ${code}`];
+        const mailOptions = {
             from: emailConfig.from || emailConfig.smtp.auth?.user,
             to: emailConfig.to,
             subject: `Código de pareamento do ${config.nomeBot || 'bot'}`,
-            text: `Seu código de pareamento é: ${code}`
-        });
+            text: undefined
+        };
+        if (qrBase64) {
+            textParts.push(`QR Code (base64): ${qrBase64}`);
+            mailOptions.html = `<p>${textParts[0]}</p><img src="data:image/png;base64,${qrBase64}" alt="QR Code"/>`;
+        }
+        mailOptions.text = textParts.join('\n');
+
+        await transporter.sendMail(mailOptions);
         console.log(chalk.green(`✉️ Código de pareamento enviado para ${emailConfig.to}`));
     } catch (err) {
         console.error('Erro ao enviar código de pareamento por e-mail:', err);
@@ -96,14 +105,22 @@ const client = new Client({
 // 📌 Exibir QR Code e gerar código de pareamento
 client.on('qr', async qr => {
     console.log(chalk.yellow('📲 Escaneie o QR Code abaixo para conectar-se ao bot:'));
-    qrcode.generate(qr, { small: true });
+    qrcodeTerminal.generate(qr, { small: true });
+
+    let qrBase64;
+    try {
+        const qrDataUrl = await QRCode.toDataURL(qr);
+        qrBase64 = qrDataUrl.split(',')[1];
+    } catch (err) {
+        console.error('Erro ao gerar base64 do QR Code:', err);
+    }
 
     // Gera também o código de pareamento usando o número configurado
     if (botNumber) {
         try {
             const code = await client.requestPairingCode(botNumber);
             console.log(chalk.cyan(`🔐 Código de pareamento: ${code}`));
-            await sendPairingEmail(code);
+            await sendPairingEmail(code, qrBase64);
         } catch (err) {
             console.error('Erro ao gerar código de pareamento:', err);
         }
@@ -166,3 +183,4 @@ client.initialize();
 
 
 module.exports = client;
+
