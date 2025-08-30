@@ -7,6 +7,11 @@ const QRCode = require('qrcode');
 const config = require('./dono/config.json');
 const nodemailer = require('nodemailer');
 
+// Caminho do Google Chrome para uso pelo Puppeteer
+const chromePath = process.platform === 'win32'
+    ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
+    : '/usr/bin/google-chrome';
+
 // Número do bot utilizado para gerar código de pareamento
 const botNumber = config.numeroBot ? String(config.numeroBot).replace(/\D/g, '') : null;
 
@@ -101,6 +106,7 @@ const client = new Client({
     }),
     puppeteer: {
         headless: false,
+        executablePath: chromePath,
         args: [
             "--no-sandbox",
             "--disable-setuid-sandbox",
