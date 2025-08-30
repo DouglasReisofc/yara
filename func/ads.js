@@ -196,11 +196,5 @@ async function startAdProcessing() {
     }
 }
 
-// Definir intervalo para processar os anúncios a cada 60 segundos
-setInterval(startAdProcessing, 60000); // 60 segundos (60000 ms)
-
-// Iniciar imediatamente ao rodar o script
-startAdProcessing();
-
-// Exportar a função startAdProcessing
+// Exportar a função de processamento para ser agendada após a inicialização do cliente
 module.exports = { startAdProcessing };

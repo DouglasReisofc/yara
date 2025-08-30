@@ -168,6 +168,7 @@ client.on('ready', () => {
   iniciarVerificacaoSorteiosAtivos();
   verificarHorariosEEnviarMensagens();
   startAdProcessing();
+  setInterval(startAdProcessing, 60000);
   abrirOuFecharGp();
 });
 
