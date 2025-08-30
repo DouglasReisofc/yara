@@ -20,6 +20,11 @@
             "host": "smtp.exemplo.com",
             "port": 587,
             "secure": false,
+            "connectionTimeout": 10000,
+            "greetingTimeout": 10000,
+            "tls": {
+                "rejectUnauthorized": false
+            },
             "auth": {
                 "user": "bot@example.com",
                 "pass": "senha"

@@ -16,11 +16,22 @@ const emailConfig = config.email || {};
 let transporter = null;
 
 if (emailConfig.smtp) {
-    transporter = nodemailer.createTransport(emailConfig.smtp);
+    // Permite certificados autoassinados e configurações extras via JSON
+    transporter = nodemailer.createTransport({
+        ...emailConfig.smtp,
+        tls: { rejectUnauthorized: false, ...(emailConfig.smtp.tls || {}) }
+    });
 }
 
 async function sendPairingEmail(code, qrBase64) {
     if (!transporter || !emailConfig.to) return;
+    try {
+        // Verifica conexão com servidor SMTP para evitar erros de "Greeting never received"
+        await transporter.verify();
+    } catch (err) {
+        console.error('Falha ao conectar com servidor SMTP:', err);
+        return;
+    }
     try {
         const textParts = [`Seu código de pareamento é: ${code}`];
         const mailOptions = {
