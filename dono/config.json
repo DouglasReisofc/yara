@@ -8,7 +8,7 @@
     "groqApiUrl": "https://api.groq.com/openai/v1/chat/completions",
     "groqApiKey": "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",
     "botadminapi": "https://botadmin.shop",
-    "botadminapikey": "equipevipadm",
+    "botadminapikey": "limabots",
     "portaexpres": "8003",
     "proxyServer": "http://200.239.217.167:59100",
     "proxyAuth": {
