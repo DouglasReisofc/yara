@@ -542,13 +542,17 @@ client.on('message', async (message) => {
 client.on('message', async (message) => {
   const { body, from, author, timestamp, type, links } = message;
 
+  console.log(`\uD83D\uDCE8 Mensagem de ${from}: ${body}`);
+
   const donoComSuFixo = `${config.numeroDono}@c.us`;
   const isGroup = from.endsWith('@g.us');
 
-  const chat = await client.getChatById(from);
-
-  await chat.sendSeen();
-
+  try {
+    const chat = await message.getChat();
+    await chat.sendSeen();
+  } catch (err) {
+    console.error('Erro ao marcar conversa como lida:', err);
+  }
 
 
   const isDono = (isGroup && author === donoComSuFixo) || (!isGroup && from === donoComSuFixo);
