@@ -12,7 +12,7 @@ const chalk = require('chalk');
 const moment = require('moment-timezone');
 const config = require('./dono/config.json');
 const { obterHorarioAtual, buscarHorarios, verificarHorariosEEnviarMensagens, storeHorapg, updateLastSent, deleteHorapg, getHorapg } = require('./func/bet.js');
-const { processTikTokMedia, processKwaiMedia, searchYTFromApi, sendSearchResults, downloadAudioFromApi, downloadVideoFromApi } = require('./func/downloader.js');
+const { processTikTokMedia, processKwaiMedia, searchYTFromApi, playFirstResult, downloadAudioFromApi, downloadVideoFromApi } = require('./func/downloader.js');
 const os = require('os');
 const ping = require('ping');
 const ffmpeg = require('fluent-ffmpeg');
@@ -1776,7 +1776,7 @@ client.on('message', async (message) => {
       }
 
       const searchQuery = args.slice(1).join(' ').trim();
-      await sendSearchResults(searchQuery, from);
+      await playFirstResult(searchQuery, from);
       break;
 
     case 'ytmp3':

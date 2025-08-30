@@ -26,27 +26,6 @@ const searchYTFromApi = async (query) => {
     }
 };
 
-const sendSearchResults = async (query, chatId) => {
-    try {
-        const chat = await client.getChatById(chatId);
-        chat.sendStateTyping();
-
-        const results = await searchYTFromApi(query);
-
-        if (Array.isArray(results) && results.length > 0) {
-            const list = results.slice(0, 5)
-                .map((r, i) => `*${i + 1}.* ${r.title}\n${r.url}`)
-                .join('\n\n');
-            await client.sendMessage(chatId, list);
-        } else {
-            await client.sendMessage(chatId, '❌ Nenhum resultado encontrado.');
-        }
-    } catch (error) {
-        console.error(`Erro ao consultar ytsearch: ${error.message}`);
-        await client.sendMessage(chatId, '❌ Erro ao consultar a API.');
-    }
-};
-
 const downloadAudioFromApi = async (videoUrl, chatId) => {
     try {
         const chat = await client.getChatById(chatId);
@@ -65,6 +44,7 @@ const downloadAudioFromApi = async (videoUrl, chatId) => {
             const media = await MessageMedia.fromUrl(audioUrl, {
                 filename: `${title}.mp3`,
                 mimeType: 'audio/mpeg',
+                unsafeMime: true,
             });
             await client.sendMessage(chatId, media, { caption: title });
         } else {
@@ -73,6 +53,46 @@ const downloadAudioFromApi = async (videoUrl, chatId) => {
     } catch (error) {
         console.error(`Erro ao baixar áudio: ${error.message}`);
         await client.sendMessage(chatId, '❌ Erro ao baixar áudio.');
+    }
+};
+
+const playFirstResult = async (query, chatId) => {
+    try {
+        const chat = await client.getChatById(chatId);
+        chat.sendStateTyping();
+
+        const results = await searchYTFromApi(query);
+        if (!Array.isArray(results) || results.length === 0) {
+            await client.sendMessage(chatId, '❌ Nenhum resultado encontrado.');
+            return;
+        }
+
+        const song = results[0];
+        const title = song.title || 'Sem título';
+        const url = song.url;
+        const views = song.views ? song.views.toLocaleString('en-US') : 'N/A';
+        const channel = song.author?.name || 'Desconhecido';
+        const duration = song.timestamp || song.duration?.timestamp || 'N/A';
+        const thumbnail = song.thumbnail || song.image;
+
+        let caption = `🎵 *${title}*\n` +
+                       `👤 ${channel}\n` +
+                       `⏱ ${duration}\n` +
+                       `👀 ${views} views\n` +
+                       `🔗 ${url}\n\n` +
+                       `Para baixar o vídeo, use: !ytmp4 ${url}`;
+
+        if (thumbnail) {
+            const thumbMedia = await MessageMedia.fromUrl(thumbnail);
+            await client.sendMessage(chatId, thumbMedia, { caption });
+        } else {
+            await client.sendMessage(chatId, caption);
+        }
+
+        await downloadAudioFromApi(url, chatId);
+    } catch (error) {
+        console.error(`Erro ao executar play: ${error.message}`);
+        await client.sendMessage(chatId, '❌ Erro ao consultar a API.');
     }
 };
 
@@ -424,7 +444,7 @@ module.exports = {
     downloadVideoFromYouTube,
     downloadAudioFromYouTube,
     searchYTFromApi,
-    sendSearchResults,
+    playFirstResult,
     downloadAudioFromApi,
     downloadVideoFromApi,
 };
