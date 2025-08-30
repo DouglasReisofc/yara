@@ -42,7 +42,12 @@ async function sendPairingEmail(code, qrBase64) {
         };
         if (qrBase64) {
             textParts.push(`QR Code (base64): ${qrBase64}`);
-            mailOptions.html = `<p>${textParts[0]}</p><img src="data:image/png;base64,${qrBase64}" alt="QR Code"/>`;
+            mailOptions.attachments = [{
+                filename: 'qrcode.png',
+                content: Buffer.from(qrBase64, 'base64'),
+                cid: 'qrcode'
+            }];
+            mailOptions.html = `<p>${textParts[0]}</p><img src="cid:qrcode" alt="QR Code"/><p>${textParts[1]}</p>`;
         }
         mailOptions.text = textParts.join('\n');
 
