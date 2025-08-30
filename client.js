@@ -91,11 +91,6 @@ const client = new Client({
     authStrategy: new LocalAuth({
         clientId: clientId
     }),
-    // Força uso da versão mais recente do WhatsApp Web para suporte ao código de pareamento
-    webVersion: '2.3000.1017054665',
-    webVersionCache: {
-        type: 'none'
-    },
     puppeteer: {
         executablePath: chromePath,
         headless: false,
@@ -138,12 +133,23 @@ client.on('qr', async qr => {
 
     // Gera também o código de pareamento usando o número configurado
     if (botNumber) {
-        try {
-            const code = await client.requestPairingCode(botNumber);
-            console.log(chalk.cyan(`🔐 Código de pareamento: ${code}`));
-            await sendPairingEmail(code, qrBase64);
-        } catch (err) {
-            console.error('Erro ao gerar código de pareamento:', err);
+        // Aguarda alguns segundos e tenta novamente em caso de falha de avaliação
+        const attempts = 3;
+        for (let i = 1; i <= attempts; i++) {
+            try {
+                if (i > 1) {
+                    await new Promise(res => setTimeout(res, 2000));
+                }
+                const code = await client.requestPairingCode(botNumber);
+                console.log(chalk.cyan(`🔐 Código de pareamento: ${code}`));
+                await sendPairingEmail(code, qrBase64);
+                break;
+            } catch (err) {
+                console.error(`Erro ao gerar código de pareamento (tentativa ${i}/${attempts}):`, err);
+                if (i === attempts) {
+                    console.error('Falha ao gerar código de pareamento após múltiplas tentativas.');
+                }
+            }
         }
     } else {
         console.warn('Número do bot não configurado para gerar código de pareamento.');
