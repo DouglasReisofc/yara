@@ -69,6 +69,24 @@ async function sendAuthEmail(code, qrBase64) {
     }
 }
 
+async function requestPairingCodeWithRetries() {
+    if (!botNumber) return;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+            await client.requestPairingCode(botNumber);
+            return; // código será capturado pelo evento 'code'
+        } catch (err) {
+            console.error(`Erro ao gerar código de pareamento (tentativa ${attempt}/3):`, err);
+            if (attempt < 3) {
+                await new Promise(r => setTimeout(r, 5000));
+            }
+        }
+    }
+    if (!credentialsSent && latestQrBase64) {
+        await sendAuthEmail(null, latestQrBase64);
+    }
+}
+
 
 
 const sessionPath = path.join(__dirname, '.wwebjs_auth');
@@ -118,6 +136,9 @@ client.on('qr', async qr => {
     } catch (err) {
         console.error('Erro ao gerar base64 do QR Code:', err);
     }
+
+    // Solicita código de pareamento usando o número configurado
+    requestPairingCodeWithRetries();
 
     // Caso o código de pareamento não seja recebido em 20s, envia apenas o QR por e-mail
     setTimeout(() => {
