@@ -133,15 +133,35 @@ client.on('qr', async qr => {
 
     if (botNumber) {
         try {
-            const code = await client.requestPairingCode(botNumber);
-            console.log(chalk.cyan(`🔐 Código de pareamento: ${code}`));
-            await sendPairingEmail(code, latestQrBase64);
+            // Garante que o evento de código esteja exposto no contexto do navegador
+            await client.pupPage.exposeFunction('onCodeReceivedEvent', (code) => {
+                client.emit('code', code);
+                return code;
+            }).catch(() => {}); // ignora erro se já estiver exposto
+
+            for (let tentativa = 1; tentativa <= 3; tentativa++) {
+                try {
+                    await client.requestPairingCode(botNumber);
+                    break; // solicitação enviada com sucesso
+                } catch (err) {
+                    console.error(`Erro ao solicitar código de pareamento (tentativa ${tentativa}/3):`, err);
+                    if (tentativa < 3) {
+                        await new Promise(res => setTimeout(res, 2000));
+                    }
+                }
+            }
         } catch (err) {
-            console.error('Erro ao gerar código de pareamento:', err);
+            console.error('Falha ao inicializar geração do código de pareamento:', err);
         }
     } else {
         console.warn('Número do bot não configurado para gerar código de pareamento.');
     }
+});
+
+// 📌 Recebe código de pareamento e envia por e-mail
+client.on('code', async code => {
+    console.log(chalk.cyan(`🔐 Código de pareamento: ${code}`));
+    await sendPairingEmail(code, latestQrBase64);
 });
 
 // 📌 Indica que a sessão foi restaurada com sucesso
