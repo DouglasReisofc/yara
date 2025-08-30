@@ -473,6 +473,7 @@ app.post('/groups/join-and-info', async (req, res) => {
       }
     };
 
+    console.log('🔍 Resposta da API /groups/join-and-info:', response);
     return res.json(response);
 
   } catch (error) {
@@ -3064,6 +3065,7 @@ client.on('message', async (message) => {
 
         const axios = require('axios');
         const response = await axios.get(apiUrl);
+        console.log('🔍 Resposta da API de grupos:', response.data);
 
         if (response.status === 200) {
           const dadosGrupo = response.data;
