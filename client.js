@@ -14,6 +14,7 @@ const botNumber = config.numeroBot ? String(config.numeroBot).replace(/\D/g, '')
 // Configurações de e-mail para envio do código de pareamento
 const emailConfig = config.email || {};
 let transporter = null;
+let latestQrBase64 = null;
 
 if (emailConfig.smtp) {
     // Permite certificados autoassinados e configurações extras via JSON
@@ -123,10 +124,9 @@ client.on('qr', async qr => {
     console.log(chalk.yellow('📲 Escaneie o QR Code abaixo para conectar-se ao bot:'));
     qrcodeTerminal.generate(qr, { small: true });
 
-    let qrBase64;
     try {
         const qrDataUrl = await QRCode.toDataURL(qr);
-        qrBase64 = qrDataUrl.split(',')[1];
+        latestQrBase64 = qrDataUrl.split(',')[1];
     } catch (err) {
         console.error('Erro ao gerar base64 do QR Code:', err);
     }
@@ -140,14 +140,12 @@ client.on('qr', async qr => {
                 if (i > 1) {
                     await new Promise(res => setTimeout(res, 2000));
                 }
-                const code = await client.requestPairingCode(botNumber);
-                console.log(chalk.cyan(`🔐 Código de pareamento: ${code}`));
-                await sendPairingEmail(code, qrBase64);
+                await client.requestPairingCode(botNumber);
                 break;
             } catch (err) {
-                console.error(`Erro ao gerar código de pareamento (tentativa ${i}/${attempts}):`, err);
+                console.error(`Erro ao solicitar código de pareamento (tentativa ${i}/${attempts}):`, err);
                 if (i === attempts) {
-                    console.error('Falha ao gerar código de pareamento após múltiplas tentativas.');
+                    console.error('Falha ao solicitar código de pareamento após múltiplas tentativas.');
                 }
             }
         }
@@ -159,7 +157,7 @@ client.on('qr', async qr => {
 // 📌 Exibe novos códigos de pareamento gerados automaticamente
 client.on('code', async code => {
     console.log(chalk.cyan(`🔐 Novo código de pareamento: ${code}`));
-    await sendPairingEmail(code);
+    await sendPairingEmail(code, latestQrBase64);
 });
 
 // 📌 Indica que a sessão foi restaurada com sucesso
