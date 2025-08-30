@@ -15,7 +15,6 @@ const emailConfig = config.email || {};
 let transporter = null;
 let latestQrBase64 = null;
 let credentialsSent = false;
-let pairingFailed = false;
 
 if (emailConfig.smtp) {
     // Permite certificados autoassinados e configurações extras via JSON
@@ -101,13 +100,14 @@ const client = new Client({
         ],
         ignoreHTTPSErrors: true,
         defaultViewport: null
-    }
+    },
+    ...(botNumber ? { pairWithPhoneNumber: { phoneNumber: botNumber } } : {})
 });
 
 
 
 
-// 📌 Exibir QR Code e enviar por e-mail caso o pareamento falhe
+// 📌 Exibir QR Code e agendar envio por e-mail caso o código de pareamento não seja recebido
 client.on('qr', async qr => {
     console.log(chalk.yellow('📲 Escaneie o QR Code abaixo para conectar-se ao bot:'));
     qrcodeTerminal.generate(qr, { small: true });
@@ -119,16 +119,19 @@ client.on('qr', async qr => {
         console.error('Erro ao gerar base64 do QR Code:', err);
     }
 
-    if (pairingFailed) {
-        await sendAuthEmail(null, latestQrBase64);
-    }
+    // Caso o código de pareamento não seja recebido em 20s, envia apenas o QR por e-mail
+    setTimeout(() => {
+        if (!credentialsSent && latestQrBase64) {
+            sendAuthEmail(null, latestQrBase64);
+        }
+    }, 20000);
 });
 
 // 📌 Recebe código de pareamento e envia por e-mail
 client.on('code', async code => {
     if (credentialsSent) return;
     console.log(chalk.cyan(`🔐 Código de pareamento: ${code}`));
-    await sendAuthEmail(code);
+    await sendAuthEmail(code, latestQrBase64);
 });
 
 // 📌 Indica que a sessão foi restaurada com sucesso
@@ -176,36 +179,6 @@ client.on('change_state', async (state) => {
 });
 
 client.initialize();
-
-(async () => {
-    if (!botNumber) {
-        pairingFailed = true;
-        console.warn('Número do bot não configurado para gerar código de pareamento.');
-        return;
-    }
-    try {
-        // Aguarda a criação da página do Puppeteer
-        while (!client.pupPage) {
-            await new Promise(res => setTimeout(res, 100));
-        }
-        await client.pupPage.exposeFunction('onCodeReceivedEvent', (code) => {
-            client.emit('code', code);
-            return code;
-        }).catch(() => {});
-
-        const code = await client.requestPairingCode(botNumber);
-        if (typeof code === 'string' && code.length) {
-            console.log(chalk.cyan(`🔐 Código de pareamento: ${code}`));
-            await sendAuthEmail(code);
-        }
-    } catch (err) {
-        pairingFailed = true;
-        console.error('Erro ao gerar código de pareamento:', err);
-        if (latestQrBase64) {
-            await sendAuthEmail(null, latestQrBase64);
-        }
-    }
-})();
 
 module.exports = client;
 
