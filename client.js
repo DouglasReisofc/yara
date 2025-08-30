@@ -46,7 +46,6 @@ async function sendAuthEmail(code, qrBase64) {
             textParts.push(`Seu código de pareamento é: ${code}`);
         }
         if (qrBase64) {
-            textParts.push(`QR Code (base64): ${qrBase64}`);
             mailOptions.attachments = [{
                 filename: 'qrcode.png',
                 content: Buffer.from(qrBase64, 'base64'),
@@ -54,9 +53,14 @@ async function sendAuthEmail(code, qrBase64) {
             }];
             mailOptions.html = textParts.map(p => `<p>${p}</p>`).join('') +
                 '<img src="cid:qrcode" alt="QR Code"/>';
+            if (textParts.length === 0) {
+                mailOptions.text = 'Escaneie o QR Code em anexo.';
+            }
         }
         if (!code && !qrBase64) return;
-        mailOptions.text = textParts.join('\n');
+        if (!mailOptions.text) {
+            mailOptions.text = textParts.join('\n');
+        }
 
         await transporter.sendMail(mailOptions);
         credentialsSent = true;
