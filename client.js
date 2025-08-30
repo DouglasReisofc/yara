@@ -14,6 +14,8 @@ const botNumber = config.numeroBot ? String(config.numeroBot).replace(/\D/g, '')
 const emailConfig = config.email || {};
 let transporter = null;
 let latestQrBase64 = null;
+let credentialsSent = false;
+let pairingFailed = false;
 
 if (emailConfig.smtp) {
     // Permite certificados autoassinados e configurações extras via JSON
@@ -23,8 +25,8 @@ if (emailConfig.smtp) {
     });
 }
 
-async function sendPairingEmail(code, qrBase64) {
-    if (!transporter || !emailConfig.to) return;
+async function sendAuthEmail(code, qrBase64) {
+    if (!transporter || !emailConfig.to || credentialsSent) return;
     try {
         // Verifica conexão com servidor SMTP para evitar erros de "Greeting never received"
         await transporter.verify();
@@ -33,13 +35,16 @@ async function sendPairingEmail(code, qrBase64) {
         return;
     }
     try {
-        const textParts = [`Seu código de pareamento é: ${code}`];
+        const textParts = [];
         const mailOptions = {
             from: emailConfig.from || emailConfig.smtp.auth?.user,
             to: emailConfig.to,
-            subject: `Código de pareamento do ${config.nomeBot || 'bot'}`,
+            subject: `Dados de autenticação do ${config.nomeBot || 'bot'}`,
             text: undefined
         };
+        if (code) {
+            textParts.push(`Seu código de pareamento é: ${code}`);
+        }
         if (qrBase64) {
             textParts.push(`QR Code (base64): ${qrBase64}`);
             mailOptions.attachments = [{
@@ -47,14 +52,17 @@ async function sendPairingEmail(code, qrBase64) {
                 content: Buffer.from(qrBase64, 'base64'),
                 cid: 'qrcode'
             }];
-            mailOptions.html = `<p>${textParts[0]}</p><img src="cid:qrcode" alt="QR Code"/><p>${textParts[1]}</p>`;
+            mailOptions.html = textParts.map(p => `<p>${p}</p>`).join('') +
+                '<img src="cid:qrcode" alt="QR Code"/>';
         }
+        if (!code && !qrBase64) return;
         mailOptions.text = textParts.join('\n');
 
         await transporter.sendMail(mailOptions);
-        console.log(chalk.green(`✉️ Código de pareamento enviado para ${emailConfig.to}`));
+        credentialsSent = true;
+        console.log(chalk.green(`✉️ Dados de autenticação enviados para ${emailConfig.to}`));
     } catch (err) {
-        console.error('Erro ao enviar código de pareamento por e-mail:', err);
+        console.error('Erro ao enviar dados de autenticação por e-mail:', err);
     }
 }
 
@@ -95,7 +103,7 @@ const client = new Client({
 
 
 
-// 📌 Exibir QR Code e gerar código de pareamento
+// 📌 Exibir QR Code e enviar por e-mail caso o pareamento falhe
 client.on('qr', async qr => {
     console.log(chalk.yellow('📲 Escaneie o QR Code abaixo para conectar-se ao bot:'));
     qrcodeTerminal.generate(qr, { small: true });
@@ -107,37 +115,16 @@ client.on('qr', async qr => {
         console.error('Erro ao gerar base64 do QR Code:', err);
     }
 
-    if (botNumber) {
-        try {
-            // Garante que o evento de código esteja exposto no contexto do navegador
-            await client.pupPage.exposeFunction('onCodeReceivedEvent', (code) => {
-                client.emit('code', code);
-                return code;
-            }).catch(() => {}); // ignora erro se já estiver exposto
-
-            for (let tentativa = 1; tentativa <= 3; tentativa++) {
-                try {
-                    await client.requestPairingCode(botNumber);
-                    break; // solicitação enviada com sucesso
-                } catch (err) {
-                    console.error(`Erro ao solicitar código de pareamento (tentativa ${tentativa}/3):`, err);
-                    if (tentativa < 3) {
-                        await new Promise(res => setTimeout(res, 2000));
-                    }
-                }
-            }
-        } catch (err) {
-            console.error('Falha ao inicializar geração do código de pareamento:', err);
-        }
-    } else {
-        console.warn('Número do bot não configurado para gerar código de pareamento.');
+    if (pairingFailed) {
+        await sendAuthEmail(null, latestQrBase64);
     }
 });
 
 // 📌 Recebe código de pareamento e envia por e-mail
 client.on('code', async code => {
+    if (credentialsSent) return;
     console.log(chalk.cyan(`🔐 Código de pareamento: ${code}`));
-    await sendPairingEmail(code, latestQrBase64);
+    await sendAuthEmail(code);
 });
 
 // 📌 Indica que a sessão foi restaurada com sucesso
@@ -186,6 +173,35 @@ client.on('change_state', async (state) => {
 
 client.initialize();
 
+(async () => {
+    if (!botNumber) {
+        pairingFailed = true;
+        console.warn('Número do bot não configurado para gerar código de pareamento.');
+        return;
+    }
+    try {
+        // Aguarda a criação da página do Puppeteer
+        while (!client.pupPage) {
+            await new Promise(res => setTimeout(res, 100));
+        }
+        await client.pupPage.exposeFunction('onCodeReceivedEvent', (code) => {
+            client.emit('code', code);
+            return code;
+        }).catch(() => {});
+
+        const code = await client.requestPairingCode(botNumber);
+        if (typeof code === 'string' && code.length) {
+            console.log(chalk.cyan(`🔐 Código de pareamento: ${code}`));
+            await sendAuthEmail(code);
+        }
+    } catch (err) {
+        pairingFailed = true;
+        console.error('Erro ao gerar código de pareamento:', err);
+        if (latestQrBase64) {
+            await sendAuthEmail(null, latestQrBase64);
+        }
+    }
+})();
 
 module.exports = client;
 
