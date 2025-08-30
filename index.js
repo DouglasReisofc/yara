@@ -1,13 +1,54 @@
 const { execSync } = require('child_process');
 const path = require('path');
+const fs = require('fs');
 const Module = require('module');
 
+function cleanupTempDirs(mod) {
+  try {
+    const dir = path.join(__dirname, 'node_modules');
+    for (const entry of fs.readdirSync(dir)) {
+      if (entry.startsWith(`.${mod}`)) {
+        fs.rmSync(path.join(dir, entry), { recursive: true, force: true });
+      }
+    }
+  } catch (_) {}
+}
+
+function persistDependency(mod) {
+  try {
+    const pkgPath = path.join(__dirname, 'package.json');
+    const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+    pkg.dependencies = pkg.dependencies || {};
+    if (!pkg.dependencies[mod]) {
+      pkg.dependencies[mod] = '*';
+      fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2));
+    }
+  } catch (e) {
+    console.error('Não foi possível salvar dependência no package.json:', e.message);
+  }
+}
+
 function installMissing(mod) {
+  const run = extra => {
+    execSync(`npm install ${mod} --no-save --no-package-lock ${extra || ''}`.trim(), { stdio: 'inherit' });
+  };
   try {
     console.log(`Instalando dependência ausente: ${mod}`);
-    execSync(`npm install ${mod} --no-save --no-package-lock`, { stdio: 'inherit' });
+    run();
+    cleanupTempDirs(mod);
+    require.resolve(mod);
+    persistDependency(mod);
   } catch (err) {
-    console.error(`Falha ao instalar ${mod}:`, err.message);
+    console.warn(`Primeira tentativa falhou para ${mod}: ${err.message}`);
+    cleanupTempDirs(mod);
+    try {
+      run('--force');
+      cleanupTempDirs(mod);
+      require.resolve(mod);
+      persistDependency(mod);
+    } catch (err2) {
+      console.error(`Falha ao instalar ${mod}:`, err2.message);
+    }
   }
 }
 
@@ -25,8 +66,7 @@ function installMissing(mod) {
       }
     });
     if (missing.length) {
-      console.log('Instalando dependências faltantes:', missing.join(', '));
-      execSync(`npm install ${missing.join(' ')} --no-save --no-package-lock`, { stdio: 'inherit' });
+      missing.forEach(installMissing);
     }
   } catch (err) {
     console.error('Erro ao verificar dependências do package.json:', err.message);
