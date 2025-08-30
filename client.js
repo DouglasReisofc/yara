@@ -6,11 +6,13 @@ const qrcodeTerminal = require('qrcode-terminal'); // Biblioteca para imprimir Q
 const QRCode = require('qrcode');
 const config = require('./dono/config.json');
 const nodemailer = require('nodemailer');
+const puppeteer = require('puppeteer');
 
 // Caminho do Google Chrome para uso pelo Puppeteer
 const chromePath = process.platform === 'win32'
     ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
     : '/usr/bin/google-chrome';
+const executablePath = fs.existsSync(chromePath) ? chromePath : puppeteer.executablePath();
 
 // Número do bot utilizado para gerar código de pareamento
 const botNumber = config.numeroBot ? String(config.numeroBot).replace(/\D/g, '') : null;
@@ -106,7 +108,7 @@ const client = new Client({
     }),
     puppeteer: {
         headless: false,
-        executablePath: chromePath,
+        executablePath,
         args: [
             "--no-sandbox",
             "--disable-setuid-sandbox",
@@ -119,7 +121,7 @@ const client = new Client({
             "--disable-background-timer-throttling",
             "--disable-renderer-backgrounding",
             "--disable-backgrounding-occluded-windows",
-            "--single-process",
+            "--disable-gpu",
             `--proxy-bypass-list=<-loopback>`
         ],
         ignoreHTTPSErrors: true,
