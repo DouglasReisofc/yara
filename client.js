@@ -1,5 +1,4 @@
 const { Client, LocalAuth } = require('whatsapp-web.js');
-const os = require('os');
 const fs = require('fs');
 const chalk = require('chalk');
 const path = require('path');
@@ -61,27 +60,6 @@ async function sendPairingEmail(code, qrBase64) {
 
 
 
-let chromePath = '/usr/bin/chromium-browser';
-let userDataDir = null;
-
-if (os.platform() === 'win32') {
-    // Usa o executável do Chrome no Windows
-    chromePath = 'C:/Program Files/Google/Chrome/Application/chrome.exe';
-
-} else {
-    // Em Linux, tenta primeiro o Google Chrome, depois o Chromium
-    if (fs.existsSync('/usr/bin/google-chrome')) {
-        chromePath = '/usr/bin/google-chrome';
-    } else if (fs.existsSync('/usr/bin/chromium-browser')) {
-        chromePath = '/usr/bin/chromium-browser';
-    }
-    // Configura perfil do Chromium, se existir
-    if (fs.existsSync('/home/douglas/.config/chromium')) {
-        userDataDir = '/home/douglas/.config/chromium';
-    }
-}
-
-
 const sessionPath = path.join(__dirname, '.wwebjs_auth');
 const sessionExists = fs.existsSync(sessionPath);
 console.log(sessionExists ? '🔄 Sessão encontrada, tentando restaurar...' : '⚡ Nenhuma sessão encontrada, escaneie o QR Code.');
@@ -93,9 +71,7 @@ const client = new Client({
         clientId: clientId
     }),
     puppeteer: {
-        executablePath: chromePath,
         headless: false,
-        userDataDir: userDataDir || undefined,
         args: [
             "--no-sandbox",
             "--disable-setuid-sandbox",
